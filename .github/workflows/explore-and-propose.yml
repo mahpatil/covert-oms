@@ -11,22 +11,10 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
+      issues: read
 
     steps:
       - uses: actions/checkout@v4
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
-      - name: Install AI CLI
-        id: cli
-        uses: ./.github/actions/install-ai-cli
-        env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
 
       - name: Compute slug and branch name
         id: meta
@@ -42,48 +30,76 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git checkout -b "${{ steps.meta.outputs.branch }}"
+          mkdir -p "changes/${{ steps.meta.outputs.slug }}"
 
-      - name: Run opsx explore
-        id: explore
+      # ── Claude path: use the official claude-code-action ──────────────────
+      - name: Explore and Propose (Claude)
+        if: vars.AI_CLI == '' || vars.AI_CLI == 'claude'
+        uses: anthropics/claude-code-action@beta
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          prompt: |
+            You are running in an automated GitHub Actions workflow.
+
+            Issue #${{ github.event.issue.number }}: ${{ github.event.issue.title }}
+
+            Issue body:
+            ${{ github.event.issue.body }}
+
+            Please do the following two steps:
+
+            Step 1 — Explore:
+            Run /opsx:explore "${{ github.event.issue.title }}: ${{ github.event.issue.body }}"
+            and write the architectural research output to `explore_output.md`.
+
+            Step 2 — Propose:
+            Run /opsx:propose "${{ github.event.issue.title }}"
+            and write:
+            - The proposal (architectural options + recommended approach) to `changes/${{ steps.meta.outputs.slug }}/proposal.md`
+            - The ordered implementation task list to `changes/${{ steps.meta.outputs.slug }}/tasks.md`
+
+            If the skills are not available, write reasonable placeholder content to those files
+            so the PR can still be reviewed by a human.
+
+      # ── Codex / OpenCode path: manual CLI install ─────────────────────────
+      - name: Setup Node (Codex/OpenCode)
+        if: vars.AI_CLI != '' && vars.AI_CLI != 'claude'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install AI CLI (Codex/OpenCode)
+        if: vars.AI_CLI != '' && vars.AI_CLI != 'claude'
+        id: cli
+        uses: ./.github/actions/install-ai-cli
+
+      - name: Explore (Codex/OpenCode)
+        if: vars.AI_CLI != '' && vars.AI_CLI != 'claude'
         env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
         run: |
-          ISSUE_TITLE="${{ github.event.issue.title }}"
-          ISSUE_BODY="${{ github.event.issue.body }}"
-          ${{ steps.cli.outputs.cmd }} "/opsx:explore \"${ISSUE_TITLE}: ${ISSUE_BODY}\"" > explore_output.md 2>&1 || true
-          echo "Explore output:"
-          cat explore_output.md
+          ${{ steps.cli.outputs.cmd }} "/opsx:explore \"${{ github.event.issue.title }}: ${{ github.event.issue.body }}\"" > explore_output.md 2>&1 || true
 
-      - name: Run opsx propose
+      - name: Propose (Codex/OpenCode)
+        if: vars.AI_CLI != '' && vars.AI_CLI != 'claude'
         env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
         run: |
           SLUG="${{ steps.meta.outputs.slug }}"
-          mkdir -p "changes/${SLUG}"
           ${{ steps.cli.outputs.cmd }} "/opsx:propose \"${{ github.event.issue.title }}\"" > propose_output.md 2>&1 || true
-
-          # If the skill wrote the files directly, they're already in place.
-          # If not, use the CLI output as the proposal.
-          if [ ! -f "changes/${SLUG}/proposal.md" ]; then
-            cp propose_output.md "changes/${SLUG}/proposal.md"
-          fi
+          [ ! -f "changes/${SLUG}/proposal.md" ] && cp propose_output.md "changes/${SLUG}/proposal.md" || true
           if [ ! -f "changes/${SLUG}/tasks.md" ]; then
-            # Generate a minimal tasks.md from the explore output as fallback
-            echo "# Tasks for: ${{ github.event.issue.title }}" > "changes/${SLUG}/tasks.md"
-            echo "" >> "changes/${SLUG}/tasks.md"
-            echo "_Generated from issue #${{ github.event.issue.number }}_" >> "changes/${SLUG}/tasks.md"
-            echo "" >> "changes/${SLUG}/tasks.md"
+            echo "# Tasks: ${{ github.event.issue.title }}" > "changes/${SLUG}/tasks.md"
             cat explore_output.md >> "changes/${SLUG}/tasks.md"
           fi
 
+      # ── Commit and open PR (always) ────────────────────────────────────────
       - name: Commit and push proposal
         run: |
-          git add changes/
-          git commit -m "proposal: add proposal for issue #${{ github.event.issue.number }} - ${{ github.event.issue.title }}"
+          git add changes/ explore_output.md 2>/dev/null || git add changes/
+          git diff --staged --quiet || git commit -m "proposal: issue #${{ github.event.issue.number }} - ${{ github.event.issue.title }}"
           git push origin "${{ steps.meta.outputs.branch }}"
 
       - name: Open proposal PR
@@ -101,9 +117,9 @@ jobs:
           - [ ] Read `changes/${{ steps.meta.outputs.slug }}/proposal.md` — architectural options and recommended approach
           - [ ] Read `changes/${{ steps.meta.outputs.slug }}/tasks.md` — ordered implementation task list
 
-          **IMPORTANT:** Review both files before approving. Merging this PR will automatically trigger the implementation workflow.
+          **IMPORTANT:** Review both files before approving. Merging this PR triggers the implementation workflow.
 
-          _Generated by the opsx explore-and-propose workflow using `${{ vars.AI_CLI || 'claude' }}` CLI._
+          _Generated using `${{ vars.AI_CLI || 'claude' }}` via the opsx pipeline._
           EOF
           )" \
             --base main \

@@ -1,9 +1,11 @@
-name: Install AI CLI
-description: Install Claude Code, Codex, or OpenCode CLI based on the AI_CLI repo variable
+name: Install AI CLI (Codex / OpenCode)
+description: |
+  Install Codex or OpenCode CLI and return the invocation command.
+  For Claude, use anthropics/claude-code-action@beta directly instead.
 
 outputs:
   cmd:
-    description: The CLI command to invoke skills (e.g. "claude --print")
+    description: The CLI command prefix (e.g. "codex --full-auto")
     value: ${{ steps.set-cmd.outputs.cmd }}
 
 runs:
@@ -12,12 +14,9 @@ runs:
     - name: Install CLI
       shell: bash
       run: |
-        CLI="${{ vars.AI_CLI || 'claude' }}"
+        CLI="${{ vars.AI_CLI }}"
         echo "Installing AI CLI: $CLI"
         case "$CLI" in
-          claude)
-            npm install -g @anthropic-ai/claude-code
-            ;;
           codex)
             npm install -g @openai/codex
             ;;
@@ -25,8 +24,7 @@ runs:
             npm install -g opencode
             ;;
           *)
-            echo "Unknown AI_CLI value '$CLI', defaulting to claude"
-            npm install -g @anthropic-ai/claude-code
+            echo "Warning: install-ai-cli action called for '$CLI'. For Claude, use anthropics/claude-code-action@beta instead."
             ;;
         esac
 
@@ -34,10 +32,8 @@ runs:
       id: set-cmd
       shell: bash
       run: |
-        CLI="${{ vars.AI_CLI || 'claude' }}"
-        case "$CLI" in
-          claude)   echo "cmd=claude --print" >> "$GITHUB_OUTPUT" ;;
+        case "${{ vars.AI_CLI }}" in
           codex)    echo "cmd=codex --full-auto" >> "$GITHUB_OUTPUT" ;;
           opencode) echo "cmd=opencode run" >> "$GITHUB_OUTPUT" ;;
-          *)        echo "cmd=claude --print" >> "$GITHUB_OUTPUT" ;;
+          *)        echo "cmd=echo 'No CLI configured'" >> "$GITHUB_OUTPUT" ;;
         esac
