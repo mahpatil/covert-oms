@@ -1,0 +1,155 @@
+# Covert OMS
+
+A demo microservices project showcasing modern .NET 8 + React architecture with an AI-driven CI/CD pipeline.
+
+**Covert** is an imaginary confidential document printing service. Customers submit print jobs, choose a local branch, and the system coordinates printing without ever exposing the raw document to the branch printer.
+
+---
+
+## Architecture
+
+```
+Browser → order-api → print-coordinator → branch-agent (notify: jobId + token)
+                            ↑
+               branch-agent presents token → pulls bytes → prints → done
+```
+
+Three .NET 8 microservices communicate over HTTP REST:
+
+| Service | Port | Role |
+|---|---|---|
+| `order-api` | 5001 | Customer-facing API. Accepts print jobs, returns status. |
+| `print-coordinator` | 5002 | Internal orchestrator. Issues short-lived tokens; stores document bytes. |
+| `branch-agent` | 5003 | Simulates a branch printer. Pulls bytes via token; discards after printing. |
+| `frontend` | 3000 | React/Vite UI. Submit jobs, pick branch, track status. |
+
+**Key design:** The branch-agent never receives document bytes directly. The coordinator issues a one-time token; the branch must present it to pull the bytes — which are then destroyed. This is the core confidentiality pattern.
+
+---
+
+## Tech Stack
+
+- **Backend:** .NET 8 ASP.NET Core (minimal APIs)
+- **Frontend:** React 18 + TypeScript + Vite
+- **Testing:** xUnit + FluentAssertions (backend), Vitest + React Testing Library (frontend)
+- **Containers:** Docker + Docker Compose
+- **Local k8s:** Kind
+- **CI/CD:** GitHub Actions (4 workflows)
+
+---
+
+## Quick Start
+
+**Run everything locally with Docker Compose:**
+
+```bash
+docker compose -f infra/docker-compose.yml up --build
+```
+
+| URL | What |
+|---|---|
+| http://localhost:3000 | React frontend |
+| http://localhost:80 | Nginx proxy (frontend + API) |
+| http://localhost:5001/swagger | order-api Swagger UI |
+| http://localhost:5002/swagger | print-coordinator Swagger UI |
+| http://localhost:5003/swagger | branch-agent Swagger UI |
+
+**Run .NET tests:**
+
+```bash
+dotnet restore CovertOms.sln
+dotnet test CovertOms.sln
+```
+
+**Run frontend tests:**
+
+```bash
+cd frontend && npm install && npm run test
+```
+
+---
+
+## AI-Driven Development Pipeline
+
+New features flow through 4 GitHub Actions workflows powered by [Claude Code](https://github.com/anthropics/claude-code-action):
+
+```
+GitHub Issue (labeled: feature)
+        ↓
+  WF1: explore-and-propose  →  PR with proposal.md + tasks.md
+        ↓ human reviews and merges
+  WF2: implement             →  implementation PR
+        ↓ human reviews and merges
+  WF3: test-and-scan         →  dotnet tests + vitest + Trivy + CodeQL
+        ↓ tests pass on main
+  WF4: deploy                →  Kind cluster
+```
+
+| Workflow | Trigger | What it does |
+|---|---|---|
+| `explore-and-propose` | Issue labeled `feature` | Runs `/opsx:explore` + `/opsx:propose` → opens PR with `changes/{slug}/proposal.md` and `tasks.md` |
+| `implement` | Proposal PR merged | Reads approved `tasks.md` → runs `/coder` → opens implementation PR |
+| `test-and-scan` | Any PR | dotnet tests, vitest, Trivy container scan, CodeQL analysis (parallel) |
+| `deploy` | Tests pass on `main` | Builds images, loads into Kind, applies manifests, smoke tests |
+
+**To trigger the pipeline:**
+1. Create a GitHub Issue describing the feature
+2. Add the `feature` label
+3. Review the generated `proposal.md` and `tasks.md` in the PR
+4. Merge to kick off implementation
+
+---
+
+## Project Structure
+
+```
+covert-oms/
+├── .github/
+│   ├── actions/install-ai-cli/   # Composite action for Codex/OpenCode
+│   ├── workflows/                # 4 CI/CD workflows
+│   └── ISSUE_TEMPLATE/
+├── changes/                      # opsx proposals land here (proposal.md + tasks.md)
+├── services/
+│   ├── order-api/                # src/ + tests/ + Dockerfile
+│   ├── print-coordinator/        # src/ + tests/ + Dockerfile
+│   └── branch-agent/             # src/ + tests/ + Dockerfile
+├── frontend/                     # React app + component tests + Dockerfile
+├── infra/
+│   ├── docker-compose.yml
+│   ├── nginx/
+│   └── kind/                     # cluster config + k8s manifests
+└── CovertOms.sln
+```
+
+---
+
+## Configuration
+
+**Required GitHub secret:**
+
+| Secret | Used by |
+|---|---|
+| `ANTHROPIC_API_KEY` | `claude-code-action` (WF1 + WF2) |
+
+**Optional GitHub variable:**
+
+| Variable | Default | Options |
+|---|---|---|
+| `AI_CLI` | `claude` | `claude`, `codex`, `opencode` |
+
+Setting `AI_CLI=codex` or `AI_CLI=opencode` switches WF1/WF2 to use Codex or OpenCode CLI instead of Claude Code Action (requires `OPENAI_API_KEY` or `OPENCODE_API_KEY`).
+
+---
+
+## Local Kind Deployment
+
+```bash
+kind create cluster --config infra/kind/cluster-config.yaml --name covert-oms
+docker compose -f infra/docker-compose.yml build
+kind load docker-image covert-oms-order-api:latest --name covert-oms
+kind load docker-image covert-oms-print-coordinator:latest --name covert-oms
+kind load docker-image covert-oms-branch-agent:latest --name covert-oms
+kind load docker-image covert-oms-frontend:latest --name covert-oms
+kubectl apply -f infra/kind/manifests/
+kubectl rollout status deployment/order-api -n covert-oms
+```
