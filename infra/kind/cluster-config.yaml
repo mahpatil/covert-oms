@@ -1,0 +1,18 @@
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+name: covert-oms
+nodes:
+  - role: control-plane
+    extraPortMappings:
+      - containerPort: 30001
+        hostPort: 5001
+        protocol: TCP
+      - containerPort: 30002
+        hostPort: 5002
+        protocol: TCP
+      - containerPort: 30003
+        hostPort: 5003
+        protocol: TCP
+      - containerPort: 30000
+        hostPort: 3000
+        protocol: TCP

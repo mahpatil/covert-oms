@@ -1,0 +1,74 @@
+name: Deploy to Kind
+
+on:
+  workflow_run:
+    workflows: ["Test and Scan"]
+    types: [completed]
+    branches: [main]
+
+jobs:
+  deploy:
+    if: github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Kind
+        run: |
+          curl -Lo kind https://kind.sigs.k8s.io/dl/v0.23.0/kind-linux-amd64
+          chmod +x kind
+          sudo mv kind /usr/local/bin/kind
+          kind version
+
+      - name: Install kubectl
+        run: |
+          curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+          chmod +x kubectl
+          sudo mv kubectl /usr/local/bin/kubectl
+          kubectl version --client
+
+      - name: Create Kind cluster
+        run: kind create cluster --config infra/kind/cluster-config.yaml --name covert-oms
+
+      - name: Build Docker images
+        run: docker compose -f infra/docker-compose.yml build
+
+      - name: Load images into Kind
+        run: |
+          kind load docker-image covert-oms-order-api:latest --name covert-oms
+          kind load docker-image covert-oms-print-coordinator:latest --name covert-oms
+          kind load docker-image covert-oms-branch-agent:latest --name covert-oms
+          kind load docker-image covert-oms-frontend:latest --name covert-oms
+
+      - name: Apply Kubernetes manifests
+        run: kubectl apply -f infra/kind/manifests/
+
+      - name: Wait for rollout
+        run: |
+          kubectl rollout status deployment/order-api -n covert-oms --timeout=120s
+          kubectl rollout status deployment/print-coordinator -n covert-oms --timeout=120s
+          kubectl rollout status deployment/branch-agent -n covert-oms --timeout=120s
+          kubectl rollout status deployment/frontend -n covert-oms --timeout=120s
+
+      - name: Smoke test
+        run: |
+          kubectl wait --for=condition=ready pod -l app=order-api -n covert-oms --timeout=60s
+          kubectl run smoketest \
+            --image=curlimages/curl:latest \
+            --restart=Never \
+            -n covert-oms \
+            -- curl -sf http://order-api/api/branches
+          sleep 5
+          kubectl logs smoketest -n covert-oms
+
+      - name: Print deployment summary
+        if: always()
+        run: |
+          echo "=== Pod Status ==="
+          kubectl get pods -n covert-oms
+          echo "=== Service Status ==="
+          kubectl get services -n covert-oms
+
+      - name: Delete Kind cluster
+        if: always()
+        run: kind delete cluster --name covert-oms

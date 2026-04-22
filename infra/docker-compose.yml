@@ -1,0 +1,88 @@
+name: covert-oms
+
+services:
+  order-api:
+    build:
+      context: ../services/order-api
+      dockerfile: Dockerfile
+    image: covert-oms-order-api:latest
+    ports:
+      - "5001:8080"
+    environment:
+      - PrintCoordinatorUrl=http://print-coordinator:8080
+      - ASPNETCORE_ENVIRONMENT=Development
+    networks:
+      - covert-net
+    depends_on:
+      - print-coordinator
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  print-coordinator:
+    build:
+      context: ../services/print-coordinator
+      dockerfile: Dockerfile
+    image: covert-oms-print-coordinator:latest
+    ports:
+      - "5002:8080"
+    environment:
+      - BranchAgentUrl=http://branch-agent:8080
+      - ASPNETCORE_ENVIRONMENT=Development
+    networks:
+      - covert-net
+    depends_on:
+      - branch-agent
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  branch-agent:
+    build:
+      context: ../services/branch-agent
+      dockerfile: Dockerfile
+    image: covert-oms-branch-agent:latest
+    ports:
+      - "5003:8080"
+    environment:
+      - PrintCoordinatorUrl=http://print-coordinator:8080
+      - ASPNETCORE_ENVIRONMENT=Development
+    networks:
+      - covert-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+    image: covert-oms-frontend:latest
+    ports:
+      - "3000:80"
+    networks:
+      - covert-net
+    depends_on:
+      - order-api
+
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    networks:
+      - covert-net
+    depends_on:
+      - order-api
+      - frontend
+
+networks:
+  covert-net:
+    driver: bridge
