@@ -1,6 +1,23 @@
 name: covert-oms
 
 services:
+  token-service:
+    build:
+      context: ../services/token-service
+      dockerfile: Dockerfile
+    image: covert-oms-token-service:latest
+    ports:
+      - "5004:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+    networks:
+      - covert-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
   order-api:
     build:
       context: ../services/order-api
@@ -10,11 +27,13 @@ services:
       - "5001:8080"
     environment:
       - PrintCoordinatorUrl=http://print-coordinator:8080
+      - TokenServiceUrl=http://token-service:8080
       - ASPNETCORE_ENVIRONMENT=Development
     networks:
       - covert-net
     depends_on:
       - print-coordinator
+      - token-service
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
       interval: 10s

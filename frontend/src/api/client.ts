@@ -1,5 +1,10 @@
 const BASE = '/api'
 
+const authHeaders = (): Record<string, string> => {
+  const token = sessionStorage.getItem('access_token')
+  return token ? { Authorization: `Bearer ${token}` } : {}
+}
+
 export interface Branch {
   id: string
   name: string
@@ -42,7 +47,7 @@ export const api = {
   submitJob: (req: SubmitJobRequest): Promise<SubmitJobResponse> =>
     fetch(`${BASE}/orders`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
       body: JSON.stringify(req),
     }).then(async r => {
       if (!r.ok) throw new Error(await r.text())
@@ -50,5 +55,5 @@ export const api = {
     }),
 
   getJob: (id: string): Promise<PrintJob> =>
-    fetch(`${BASE}/orders/${id}`).then(r => r.json()),
+    fetch(`${BASE}/orders/${id}`, { headers: authHeaders() }).then(r => r.json()),
 }
