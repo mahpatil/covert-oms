@@ -5,6 +5,17 @@ const authHeaders = (): Record<string, string> => {
   return token ? { Authorization: `Bearer ${token}` } : {}
 }
 
+const handle = async (r: Response) => {
+  if (r.status === 401) {
+    sessionStorage.removeItem('access_token')
+    sessionStorage.removeItem('username')
+    window.dispatchEvent(new Event('auth:expired'))
+    throw new Error('Session expired. Please sign in again.')
+  }
+  if (!r.ok) throw new Error(await r.text())
+  return r.json()
+}
+
 export interface Branch {
   id: string
   name: string
@@ -42,18 +53,15 @@ export interface PrintJob {
 
 export const api = {
   getBranches: (): Promise<Branch[]> =>
-    fetch(`${BASE}/branches`).then(r => r.json()),
+    fetch(`${BASE}/branches`).then(handle),
 
   submitJob: (req: SubmitJobRequest): Promise<SubmitJobResponse> =>
     fetch(`${BASE}/orders`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...authHeaders() },
       body: JSON.stringify(req),
-    }).then(async r => {
-      if (!r.ok) throw new Error(await r.text())
-      return r.json()
-    }),
+    }).then(handle),
 
   getJob: (id: string): Promise<PrintJob> =>
-    fetch(`${BASE}/orders/${id}`, { headers: authHeaders() }).then(r => r.json()),
+    fetch(`${BASE}/orders/${id}`, { headers: authHeaders() }).then(handle),
 }
