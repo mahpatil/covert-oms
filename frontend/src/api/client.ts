@@ -62,6 +62,9 @@ export const api = {
       body: JSON.stringify(req),
     }).then(handle),
 
+  listJobs: (): Promise<PrintJob[]> =>
+    fetch(`${BASE}/orders`, { headers: authHeaders() }).then(handle),
+
   getJob: (id: string): Promise<PrintJob> =>
     fetch(`${BASE}/orders/${id}`, { headers: authHeaders() }).then(handle),
 }

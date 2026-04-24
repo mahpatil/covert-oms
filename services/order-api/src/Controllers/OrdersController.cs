@@ -56,6 +56,9 @@ public class OrdersController : ControllerBase
         return Accepted(new { job.Id, job.Status });
     }
 
+    [HttpGet]
+    public IActionResult ListJobs() => Ok(_jobs.Values.OrderByDescending(j => j.CreatedAt));
+
     [HttpGet("{id}")]
     public IActionResult GetJob(string id)
     {

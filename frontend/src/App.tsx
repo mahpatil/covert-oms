@@ -4,7 +4,7 @@ import { AppBar, Toolbar, Typography, Box, Button, Avatar } from '@mui/material'
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined'
 import { LoginForm } from './components/LoginForm'
 import { SubmitJobForm } from './components/SubmitJobForm'
-import { OrderStatus } from './components/OrderStatus'
+import { JobsList } from './components/JobsList'
 
 const theme = createTheme({
   palette: {
@@ -35,14 +35,14 @@ export default function App() {
   const [username, setUsername] = useState<string | null>(
     () => sessionStorage.getItem('username')
   )
-  const [jobId, setJobId] = useState<string | null>(null)
+  const [showForm, setShowForm] = useState(false)
 
   // Listen for session expiry triggered by 401 responses
   useEffect(() => {
     const onExpired = () => {
       setToken(null)
       setUsername(null)
-      setJobId(null)
+      setShowForm(false)
     }
     window.addEventListener('auth:expired', onExpired)
     return () => window.removeEventListener('auth:expired', onExpired)
@@ -58,7 +58,7 @@ export default function App() {
     sessionStorage.removeItem('username')
     setToken(null)
     setUsername(null)
-    setJobId(null)
+    setShowForm(false)
   }
 
   return (
@@ -94,20 +94,10 @@ export default function App() {
       <Box sx={{ minHeight: 'calc(100vh - 64px)', bgcolor: 'background.default', py: 6 }}>
         {!token ? (
           <LoginForm onLogin={handleLogin} />
-        ) : jobId ? (
-          <Box sx={{ maxWidth: 560, mx: 'auto', px: 2 }}>
-            <OrderStatus jobId={jobId} />
-            <Button
-              variant="outlined"
-              onClick={() => setJobId(null)}
-              sx={{ mt: 3 }}
-              fullWidth
-            >
-              Submit another job
-            </Button>
-          </Box>
+        ) : showForm ? (
+          <SubmitJobForm onSubmitted={() => setShowForm(false)} />
         ) : (
-          <SubmitJobForm onSubmitted={setJobId} />
+          <JobsList onNewJob={() => setShowForm(true)} />
         )}
       </Box>
 
