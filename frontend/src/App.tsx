@@ -90,7 +90,6 @@ export default function App() {
           )}
         </Toolbar>
       </AppBar>
-
       <Box sx={{ minHeight: 'calc(100vh - 64px)', bgcolor: 'background.default', py: 6 }}>
         {!token ? (
           <LoginForm onLogin={handleLogin} />
