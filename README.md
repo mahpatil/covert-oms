@@ -8,10 +8,14 @@ A demo microservices project showcasing modern .NET 8 + React architecture with 
 
 ## Architecture
 
-```
-Browser → order-api → print-coordinator → branch-agent (notify: jobId + token)
-                            ↑
-               branch-agent presents token → pulls bytes → prints → done
+```mermaid
+graph LR
+    Browser --> OA[order-api]
+    OA --> PC[print-coordinator]
+    PC -- "notify: jobId + token" --> BA[branch-agent]
+    BA -- "presents token" --> PC
+    PC -- "pulls bytes" --> BA
+    BA --> Done[Done]
 ```
 
 Three .NET 8 microservices communicate over HTTP REST:
@@ -83,6 +87,37 @@ GitHub Issue (labeled: feature)
   WF3: test-and-scan         →  dotnet tests + vitest + Trivy + CodeQL
         ↓ tests pass on main
   WF4: deploy                →  Kind cluster
+```
+```mermaid
+flowchart TD
+    %% Main vertical spine
+    A[GitHub Issue label: feature] --> ROW_B[WF1: explore-and-propose]
+    ROW_B -- "Human reviews and merges" --> ROW_C[WF2: implement]
+    ROW_C -- "Human reviews and merges" --> ROW_D[WF3: test-and-scan]
+    ROW_D -- "Tests pass on main" --> E[WF4: deploy: Kind cluster]
+
+    %% Put B and B2 in a small horizontal group
+    subgraph ROW_B[WF1: explore-and-propose]
+      direction LR
+      B[WF1] --> B1[PR with proposal.md]
+      B1 --- B2[ + tasks.md]
+    end
+    
+    %% Put C and C2 in a small horizontal group
+    subgraph ROW_C[WF2: implement]
+      direction LR
+      C[WF2] --> C1[implementation PR]
+    end
+
+    %% Put D and D2 in a small horizontal group
+    subgraph ROW_D[WF3: test-and-scan]
+      direction LR
+      D[WF3] --> D1[dotnet tests]
+      D1 --> D2[+ vitest]
+      D2 --> D3[+ Trivy]
+      D3 --> D4[+ Code QL]
+    end
+
 ```
 
 | Workflow | Trigger | What it does |
