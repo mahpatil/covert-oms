@@ -72,7 +72,7 @@ covert-oms/
 
 ### Multi-CLI Support
 - `AI_CLI` repo variable: `claude` (default) | `codex` | `opencode`
-- **Claude** → uses `anthropics/claude-code-action@beta` (no manual CLI install needed)
+- **Claude** → uses `anthropics/claude-code-action@v1` (no manual CLI install needed)
 - **Codex/OpenCode** → uses `.github/actions/install-ai-cli` composite action
 
 | CLI | Secret needed |
@@ -85,7 +85,7 @@ covert-oms/
 
 ### WF1: `explore-and-propose.yml` ✓
 - **Trigger:** `issues: [labeled]` where label = `feature`
-- **Claude path:** `anthropics/claude-code-action@beta` with prompt running `/opsx:explore` + `/opsx:propose`
+- **Claude path:** `anthropics/claude-code-action@v1` with prompt running `/opsx:explore` + `/opsx:propose`
 - **Other CLIs:** manual install + CLI invocation
 - **Output:** PR with `changes/{slug}/proposal.md` + `changes/{slug}/tasks.md`
 - **Human gate:** reviewer must read both files before merging
