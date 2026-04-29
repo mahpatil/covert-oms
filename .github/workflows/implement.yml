@@ -6,6 +6,10 @@ on:
     paths:
       - 'changes/**/tasks.md'
 
+permissions:
+  contents: read
+  id-token: write
+  
 jobs:
   implement:
     runs-on: ubuntu-latest

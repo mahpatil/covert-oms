@@ -4,6 +4,10 @@ on:
   issues:
     types: [labeled]
 
+permissions:
+  contents: read
+  id-token: write
+  
 jobs:
   generate-proposal:
     if: github.event.label.name == 'feature'

@@ -1,7 +1,7 @@
 name: Install AI CLI (Codex / OpenCode)
 description: |
   Install Codex or OpenCode CLI and return the invocation command.
-  For Claude, use anthropics/claude-code-action@beta directly instead.
+  For Claude, use anthropics/claude-code-action@v1 directly instead.
 
 outputs:
   cmd:
@@ -24,7 +24,7 @@ runs:
             npm install -g opencode
             ;;
           *)
-            echo "Warning: install-ai-cli action called for '$CLI'. For Claude, use anthropics/claude-code-action@beta instead."
+            echo "Warning: install-ai-cli action called for '$CLI'. For Claude, use anthropics/claude-code-action@v1 instead."
             ;;
         esac
 

@@ -92,7 +92,7 @@ covert-oms/
 
 ### WF2: `implement.yml` ✓
 - **Trigger:** `push` to `main` with path filter `changes/**/tasks.md`
-- **Claude path:** `anthropics/claude-code-action@beta` with prompt running `/coder tasks.md`
+- **Claude path:** `anthropics/claude-code-action@v1` with prompt running `/coder tasks.md`
 - **Other CLIs:** manual install + CLI invocation
 - **Output:** implementation PR on branch `feat/implement-{slug}`
 - **Human gate:** reviewer must approve implementation before merging
