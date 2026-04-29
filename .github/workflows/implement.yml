@@ -40,6 +40,8 @@ jobs:
           dotnet-version: '8.0.x'
 
       - name: Create implementation branch
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         if: steps.spec.outputs.skip != 'true'
         run: |
           git config user.name "github-actions[bot]"
@@ -90,6 +92,8 @@ jobs:
 
       # ── Commit and open PR (always) ────────────────────────────────────────
       - name: Commit implementation
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         if: steps.spec.outputs.skip != 'true'
         run: |
           git add -A

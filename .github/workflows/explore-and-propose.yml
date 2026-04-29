@@ -97,6 +97,8 @@ jobs:
 
       # ── Commit and open PR (always) ────────────────────────────────────────
       - name: Commit and push proposal
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           git add changes/ explore_output.md 2>/dev/null || git add changes/
           git diff --staged --quiet || git commit -m "proposal: issue #${{ github.event.issue.number }} - ${{ github.event.issue.title }}"
