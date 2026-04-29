@@ -4,14 +4,13 @@ on:
   pull_request:
     branches: [main]
 
-permissions:
-  contents: read
-  id-token: write
-  
 jobs:
   dotnet-tests:
     name: .NET Tests
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write    
     steps:
       - uses: actions/checkout@v4
 
@@ -39,6 +38,9 @@ jobs:
   frontend-tests:
     name: Frontend Tests
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write    
     steps:
       - uses: actions/checkout@v4
 
