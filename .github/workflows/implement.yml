@@ -50,7 +50,7 @@ jobs:
         if: steps.spec.outputs.skip != 'true' && (vars.AI_CLI == '' || vars.AI_CLI == 'claude')
         uses: anthropics/claude-code-action@beta
         with:
-          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           prompt: |
             You are running in an automated GitHub Actions workflow.
 
