@@ -3,20 +3,16 @@ name: Explore and Propose
 on:
   issues:
     types: [labeled]
-
-permissions:
-  contents: read
-  id-token: write
   
 jobs:
   generate-proposal:
     if: github.event.label.name == 'feature'
     runs-on: ubuntu-latest
     permissions:
+      id-token: write
       contents: write
       pull-requests: write
       issues: read
-
     steps:
       - uses: actions/checkout@v4
 
