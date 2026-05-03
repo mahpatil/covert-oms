@@ -21,7 +21,7 @@ runs:
             npm install -g --ignore-scripts @openai/codex@0.128.0
             ;;
           opencode)
-            npm install -g opencode-ai@1.14.33 --ignore-scripts
+            npm install -g  --ignore-scripts opencode-ai@1.14.33
             ;;
           *)
             echo "Warning: install-ai-cli action called for '$CLI'. For Claude, use anthropics/claude-code-action@v1 instead."
