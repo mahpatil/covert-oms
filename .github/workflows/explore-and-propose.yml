@@ -78,17 +78,21 @@ jobs:
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
+          ISSUE_TITLE: ${{ github.event.issue.title }}
+          ISSUE_BODY: ${{ github.event.issue.body }}
         run: |
-          ${{ steps.cli.outputs.cmd }} "/opsx:explore \"${{ github.event.issue.title }}: ${{ github.event.issue.body }}\"" > explore_output.md 2>&1 || true
+          ${{ steps.cli.outputs.cmd }} "/opsx:explore \"$ISSUE_TITLE: $ISSUE_BODY\"" > explore_output.md 2>&1 || true
 
       - name: Propose (Codex/OpenCode)
         if: vars.AI_CLI != '' && vars.AI_CLI != 'claude'
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
+          ISSUE_TITLE: ${{ github.event.issue.title }}
+          ISSUE_BODY: ${{ github.event.issue.body }}
         run: |
           SLUG="${{ steps.meta.outputs.slug }}"
-          ${{ steps.cli.outputs.cmd }} "/opsx:propose \"${{ github.event.issue.title }}\"" > propose_output.md 2>&1 || true
+          ${{ steps.cli.outputs.cmd }} "/opsx:propose \"$ISSUE_TITLE\"" > propose_output.md 2>&1 || true
           [ ! -f "changes/${SLUG}/proposal.md" ] && cp propose_output.md "changes/${SLUG}/proposal.md" || true
           if [ ! -f "changes/${SLUG}/tasks.md" ]; then
             echo "# Tasks: ${{ github.event.issue.title }}" > "changes/${SLUG}/tasks.md"
