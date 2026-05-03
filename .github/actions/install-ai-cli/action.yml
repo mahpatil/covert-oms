@@ -18,10 +18,10 @@ runs:
         echo "Installing AI CLI: $CLI"
         case "$CLI" in
           codex)
-            npm install -g @openai/codex --ignore-scripts --frozen-lockfile
+            npm install -g --ignore-scripts @openai/codex@0.128.0
             ;;
           opencode)
-            npm install -g opencode --ignore-scripts --frozen-lockfile
+            npm install -g opencode-ai@1.14.33 --ignore-scripts
             ;;
           *)
             echo "Warning: install-ai-cli action called for '$CLI'. For Claude, use anthropics/claude-code-action@v1 instead."
