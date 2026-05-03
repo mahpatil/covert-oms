@@ -1,3 +1,4 @@
+using System.Web;
 using BranchAgent.Models;
 using BranchAgent.Services;
 using Microsoft.AspNetCore.Mvc;
@@ -38,8 +39,10 @@ public class PrintController : ControllerBase
     {
         try
         {
+            string docUrl = "/internal/jobs/documents/" + HttpUtility.UrlEncode(notification.Token);
+
             // Pull the document using the token — bytes are never pushed to us
-            var response = await _coordinator.GetAsync($"/internal/jobs/documents/{notification.Token}");
+            var response = await _coordinator.GetAsync(docUrl);
             if (!response.IsSuccessStatusCode)
             {
                 _logger.LogWarning("Failed to retrieve document for job {JobId}: {Status}",
