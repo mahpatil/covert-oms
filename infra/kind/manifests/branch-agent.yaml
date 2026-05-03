@@ -1,3 +1,32 @@
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: storage-limit-range
+  namespace: covert-oms
+spec:
+  limits:
+  - defaultRequest:
+      ephemeral-storage: "10Mi"
+    type: Container
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: branch-agent
+  namespace: covert-oms
+---
+
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: mem-limit-range
+  namespace: covert-oms
+spec:
+  limits:
+    - type: Container
+      defaultRequest:
+        memory: 100Mi
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -16,6 +45,9 @@ spec:
       containers:
         - name: branch-agent
           image: covert-oms-branch-agent:latest
+          resources:
+            limits:
+              memory: 100Mi
           imagePullPolicy: Never
           ports:
             - containerPort: 8080
@@ -28,6 +60,7 @@ spec:
               port: 8080
             initialDelaySeconds: 5
             periodSeconds: 5
+      automountServiceAccountToken: false
 ---
 apiVersion: v1
 kind: Service

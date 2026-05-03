@@ -19,6 +19,7 @@ spec:
           imagePullPolicy: Never
           ports:
             - containerPort: 80
+      automountServiceAccountToken: false
 ---
 apiVersion: v1
 kind: Service
