@@ -6,6 +6,10 @@ on:
   
 jobs:
   generate-proposal:
+    env:
+      ISSUE_TITLE: ${{ github.event.issue.title }}
+      ISSUE_NUMBER: ${{ github.event.issue.number }}
+      ISSUE_BODY: ${{ github.event.issue.body }}
     if: github.event.label.name == 'feature'
     runs-on: ubuntu-latest
     permissions:
@@ -19,9 +23,9 @@ jobs:
       - name: Compute slug and branch name
         id: meta
         run: |
-          TITLE="${{ github.event.issue.title }}"
+          TITLE="$ISSUE_TITLE"
           SLUG=$(echo "$TITLE" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/-/g' | sed 's/--*/-/g' | sed 's/^-//' | sed 's/-$//' | cut -c1-50)
-          BRANCH="proposal/issue-${{ github.event.issue.number }}-${SLUG}"
+          BRANCH="proposal/issue-$ISSUE_NUMBER-${SLUG}"
           echo "slug=$SLUG" >> "$GITHUB_OUTPUT"
           echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
 
@@ -41,19 +45,19 @@ jobs:
           prompt: |
             You are running in an automated GitHub Actions workflow.
 
-            Issue #${{ github.event.issue.number }}: ${{ github.event.issue.title }}
+            Issue #$ISSUE_NUMBER: $ISSUE_TITLE
 
             Issue body:
-            ${{ github.event.issue.body }}
+            $ISSUE_BODY
 
             Please do the following two steps:
 
             Step 1 — Explore:
-            Run /opsx:explore "${{ github.event.issue.title }}: ${{ github.event.issue.body }}"
+            Run /opsx:explore "$ISSUE_TITLE: $ISSUE_BODY"
             and write the architectural research output to `explore_output.md`.
 
             Step 2 — Propose:
-            Run /opsx:propose "${{ github.event.issue.title }}"
+            Run /opsx:propose "$ISSUE_TITLE"
             and write:
             - The proposal (architectural options + recommended approach) to `changes/${{ steps.meta.outputs.slug }}/proposal.md`
             - The ordered implementation task list to `changes/${{ steps.meta.outputs.slug }}/tasks.md`
@@ -78,8 +82,6 @@ jobs:
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
-          ISSUE_TITLE: ${{ github.event.issue.title }}
-          ISSUE_BODY: ${{ github.event.issue.body }}
         run: |
           ${{ steps.cli.outputs.cmd }} "/opsx:explore \"$ISSUE_TITLE: $ISSUE_BODY\"" > explore_output.md 2>&1 || true
 
@@ -88,14 +90,12 @@ jobs:
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
-          ISSUE_TITLE: ${{ github.event.issue.title }}
-          ISSUE_BODY: ${{ github.event.issue.body }}
         run: |
           SLUG="${{ steps.meta.outputs.slug }}"
           ${{ steps.cli.outputs.cmd }} "/opsx:propose \"$ISSUE_TITLE\"" > propose_output.md 2>&1 || true
           [ ! -f "changes/${SLUG}/proposal.md" ] && cp propose_output.md "changes/${SLUG}/proposal.md" || true
           if [ ! -f "changes/${SLUG}/tasks.md" ]; then
-            echo "# Tasks: ${{ github.event.issue.title }}" > "changes/${SLUG}/tasks.md"
+            echo "# Tasks: $ISSUE_TITLE" > "changes/${SLUG}/tasks.md"
             cat explore_output.md >> "changes/${SLUG}/tasks.md"
           fi
 
@@ -105,7 +105,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           git add changes/ explore_output.md 2>/dev/null || git add changes/
-          git diff --staged --quiet || git commit -m "proposal: issue #${{ github.event.issue.number }} - ${{ github.event.issue.title }}"
+          git diff --staged --quiet || git commit -m "proposal: issue #$ISSUE_NUMBER - $ISSUE_TITLE"
           git push origin "${{ steps.meta.outputs.branch }}"
 
       - name: Open proposal PR
@@ -113,11 +113,11 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh pr create \
-            --title "proposal: ${{ github.event.issue.title }}" \
+            --title "proposal: $ISSUE_TITLE" \
             --body "$(cat <<'EOF'
-          ## Proposal for Issue #${{ github.event.issue.number }}
+          ## Proposal for Issue #$ISSUE_NUMBER
 
-          Closes #${{ github.event.issue.number }}
+          Closes #$ISSUE_NUMBER
 
           ### Review Checklist
           - [ ] Read `changes/${{ steps.meta.outputs.slug }}/proposal.md` — architectural options and recommended approach
