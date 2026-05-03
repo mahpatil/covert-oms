@@ -25,6 +25,7 @@ spec:
               port: 8080
             initialDelaySeconds: 5
             periodSeconds: 5
+      automountServiceAccountToken: false
 ---
 apiVersion: v1
 kind: Service
