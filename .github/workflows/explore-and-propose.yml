@@ -41,7 +41,8 @@ jobs:
         if: vars.AI_CLI == '' || vars.AI_CLI == 'claude'
         uses: anthropics/claude-code-action@v1
         with:
-          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+#          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           prompt: |
             You are running in an automated GitHub Actions workflow.
 
@@ -101,16 +102,16 @@ jobs:
 
       # ── Commit and open PR (always) ────────────────────────────────────────
       - name: Commit and push proposal
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+#        env:
+#          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           git add changes/ explore_output.md 2>/dev/null || git add changes/
           git diff --staged --quiet || git commit -m "proposal: issue #$ISSUE_NUMBER - $ISSUE_TITLE"
           git push origin "${{ steps.meta.outputs.branch }}"
 
       - name: Open proposal PR
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+#        env:
+#          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh pr create \
             --title "proposal: $ISSUE_TITLE" \
