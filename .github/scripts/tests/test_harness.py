@@ -2,8 +2,9 @@ import tempfile
 import unittest
 from argparse import Namespace
 from pathlib import Path
+from unittest import mock
 
-from harness import do_run
+from harness import _run_prompt, do_run
 
 
 class HarnessTests(unittest.TestCase):
@@ -21,6 +22,16 @@ class HarnessTests(unittest.TestCase):
             proposal = Path(tmp) / "changes/dummy-issue/proposal.md"
             self.assertTrue(proposal.exists())
             self.assertIn("Dummy Proposal", proposal.read_text(encoding="utf-8"))
+
+    def test_run_prompt_retries_exec_format_with_bash(self):
+        primary_error = OSError(8, "Exec format error")
+        fallback_proc = mock.Mock(stdout="ok", stderr="")
+
+        with mock.patch("subprocess.run", side_effect=[primary_error, fallback_proc]) as run_mock:
+            output = _run_prompt(["claude", "-p"], "hello")
+
+        self.assertEqual(output, "ok")
+        self.assertEqual(run_mock.call_count, 2)
 
 
 if __name__ == "__main__":
