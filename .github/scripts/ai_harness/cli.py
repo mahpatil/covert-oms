@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Mapping
 
-SUPPORTED = {"claude", "codex", "opencode", "gemini"}
+SUPPORTED = {"claude", "codex", "opencode", "gemini", "dummy"}
 
 
 def provider_from_value(value: str | None) -> str:
@@ -20,6 +20,7 @@ def required_env_for_provider(provider: str) -> tuple[str, ...]:
         "codex": ("OPENAI_API_KEY",),
         "opencode": ("OPENCODE_API_KEY",),
         "gemini": ("GEMINI_API_KEY",),
+        "dummy": tuple(),
     }[provider]
 
 
@@ -32,4 +33,6 @@ def command_for_provider(provider: str, env: Mapping[str, str]) -> list[str]:
         return ["opencode", "run"]
     if provider == "gemini":
         return ["gemini", "-p"]
+    if provider == "dummy":
+        return ["python", "-c", "print(\"dummy provider output\")"]
     raise ValueError(f"Unsupported provider: {provider}")

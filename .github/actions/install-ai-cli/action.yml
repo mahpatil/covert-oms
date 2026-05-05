@@ -28,6 +28,9 @@ runs:
           claude)
             npm install -g --ignore-scripts @anthropic-ai/claude-code
             ;;
+          dummy)
+            echo "Dummy provider selected; skipping CLI install."
+            ;;
           *)
             echo "Unsupported AI_CLI: $CLI" >&2
             exit 1
@@ -43,4 +46,5 @@ runs:
           opencode) echo "cmd=opencode run" >> "$GITHUB_OUTPUT" ;;
           gemini)   echo "cmd=gemini -p" >> "$GITHUB_OUTPUT" ;;
           claude)   echo "cmd=claude -p" >> "$GITHUB_OUTPUT" ;;
+          dummy)    echo "cmd=python -c print(\"dummy provider output\")" >> "$GITHUB_OUTPUT" ;;
         esac

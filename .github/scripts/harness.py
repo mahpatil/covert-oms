@@ -32,6 +32,16 @@ def _run_prompt(command: list[str], prompt: str) -> str:
         return f"CLI execution failed: {exc}"
 
 
+def _dummy_outputs(issue_title: str, issue_body: str) -> tuple[str, str]:
+    explore = f"# Dummy Explore Output\n\nIssue: {issue_title}\n\nSummary: {issue_body[:200]}\n"
+    propose = (
+        f"# Dummy Proposal: {issue_title}\n\n"
+        "## Option A\nUse existing workflow with harness orchestration.\n\n"
+        "## Option B\nIntroduce phased rollout for provider-specific behavior.\n"
+    )
+    return explore, propose
+
+
 def do_meta(args: argparse.Namespace) -> int:
     slug = build_slug(args.issue_title)
     branch = build_branch(args.issue_number, slug)
@@ -51,9 +61,12 @@ def do_run(args: argparse.Namespace) -> int:
     for name in required_env_for_provider(provider):
         if not os.getenv(name):
             print(f"warning: missing expected credential {name}")
-    cmd = command_for_provider(provider, os.environ)
-    explore = _run_prompt(cmd, f'/opsx:explore "{args.issue_title}: {args.issue_body}"')
-    propose = _run_prompt(cmd, f'/opsx:propose "{args.issue_title}"')
+    if provider == "dummy":
+        explore, propose = _dummy_outputs(args.issue_title, args.issue_body)
+    else:
+        cmd = command_for_provider(provider, os.environ)
+        explore = _run_prompt(cmd, f'/opsx:explore "{args.issue_title}: {args.issue_body}"')
+        propose = _run_prompt(cmd, f'/opsx:propose "{args.issue_title}"')
     ensure_outputs(args.issue_title, build_slug(args.issue_title), Path(args.workdir), explore, propose)
     return 0
 
