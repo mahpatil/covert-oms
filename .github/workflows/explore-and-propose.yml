@@ -3,13 +3,9 @@ name: Explore and Propose
 on:
   issues:
     types: [labeled]
-  
+
 jobs:
   generate-proposal:
-    env:
-      ISSUE_TITLE: ${{ github.event.issue.title }}
-      ISSUE_NUMBER: ${{ github.event.issue.number }}
-      ISSUE_BODY: ${{ github.event.issue.body }}
     if: github.event.label.name == 'feature'
     runs-on: ubuntu-latest
     permissions:
@@ -17,127 +13,73 @@ jobs:
       contents: write
       pull-requests: write
       issues: read
-      
+    env:
+      ISSUE_TITLE: ${{ github.event.issue.title }}
+      ISSUE_NUMBER: ${{ github.event.issue.number }}
+      ISSUE_BODY: ${{ github.event.issue.body }}
+      AI_PROVIDER: ${{ vars.AI_CLI || 'claude' }}
+
     steps:
       - uses: actions/checkout@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           persist-credentials: true
-        
-      - name: Compute slug and branch name
-        id: meta
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          TITLE="$ISSUE_TITLE"
-          SLUG=$(echo "$TITLE" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/-/g' | sed 's/--*/-/g' | sed 's/^-//' | sed 's/-$//' | cut -c1-50)
-          BRANCH="proposal/issue-$ISSUE_NUMBER-${SLUG}"
-          echo "slug=$SLUG" >> "$GITHUB_OUTPUT"
-          echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
 
-      - name: Create proposal branch
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git remote set-url origin "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git"
-          git checkout -b "${{ steps.meta.outputs.branch }}"
-          mkdir -p "changes/${{ steps.meta.outputs.slug }}"
-
-      # ── Claude path: use the official claude-code-action ──────────────────
-      - name: Explore and Propose (Claude)
-        if: vars.AI_CLI == '' || vars.AI_CLI == 'claude'
-        uses: anthropics/claude-code-action@v1
+      - uses: actions/setup-python@v5
         with:
-#          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
-          prompt: |
-            You are running in an automated GitHub Actions workflow.
+          python-version: '3.12'
 
-            Issue #$ISSUE_NUMBER: $ISSUE_TITLE
-
-            Issue body:
-            $ISSUE_BODY
-
-            Please do the following two steps:
-
-            Step 1 — Explore:
-            Run /opsx:explore "$ISSUE_TITLE: $ISSUE_BODY"
-            and write the architectural research output to `explore_output.md`.
-
-            Step 2 — Propose:
-            Run /opsx:propose "$ISSUE_TITLE"
-            and write:
-            - The proposal (architectural options + recommended approach) to `changes/${{ steps.meta.outputs.slug }}/proposal.md`
-            - The ordered implementation task list to `changes/${{ steps.meta.outputs.slug }}/tasks.md`
-
-            If the skills are not available, write reasonable placeholder content to those files
-            so the PR can still be reviewed by a human.
-
-      # ── Codex / OpenCode path: manual CLI install ─────────────────────────
-      - name: Setup Node (Codex/OpenCode)
-        if: vars.AI_CLI != '' && vars.AI_CLI != 'claude'
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: '20'
 
-      - name: Install AI CLI (Codex/OpenCode)
-        if: vars.AI_CLI != '' && vars.AI_CLI != 'claude'
-        id: cli
+      - name: Install provider CLI
         uses: ./.github/actions/install-ai-cli
 
-      - name: Explore (Codex/OpenCode)
-        if: vars.AI_CLI != '' && vars.AI_CLI != 'claude'
+      - name: Compute metadata
+        id: meta
+        run: |
+          python .github/scripts/harness.py \
+            --mode meta \
+            --issue-title "$ISSUE_TITLE" \
+            --issue-number "$ISSUE_NUMBER"
+
+      - name: Create proposal branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -b "${{ steps.meta.outputs.branch }}"
+          mkdir -p "changes/${{ steps.meta.outputs.slug }}"
+
+      - name: Run explore/propose harness
         env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: |
-          ${{ steps.cli.outputs.cmd }} "/opsx:explore \"$ISSUE_TITLE: $ISSUE_BODY\"" > explore_output.md 2>&1 || true
+          python .github/scripts/harness.py \
+            --mode run \
+            --provider "$AI_PROVIDER" \
+            --issue-title "$ISSUE_TITLE" \
+            --issue-number "$ISSUE_NUMBER" \
+            --issue-body "$ISSUE_BODY"
 
-      - name: Propose (Codex/OpenCode)
-        if: vars.AI_CLI != '' && vars.AI_CLI != 'claude'
-        env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
-        run: |
-          SLUG="${{ steps.meta.outputs.slug }}"
-          ${{ steps.cli.outputs.cmd }} "/opsx:propose \"$ISSUE_TITLE\"" > propose_output.md 2>&1 || true
-          [ ! -f "changes/${SLUG}/proposal.md" ] && cp propose_output.md "changes/${SLUG}/proposal.md" || true
-          if [ ! -f "changes/${SLUG}/tasks.md" ]; then
-            echo "# Tasks: $ISSUE_TITLE" > "changes/${SLUG}/tasks.md"
-            cat explore_output.md >> "changes/${SLUG}/tasks.md"
-          fi
-
-      # ── Commit and open PR (always) ────────────────────────────────────────
       - name: Commit and push proposal
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           git add changes/ explore_output.md 2>/dev/null || git add changes/
           git diff --staged --quiet || git commit -m "proposal: issue #$ISSUE_NUMBER - $ISSUE_TITLE"
-          # Push using the token explicitly
-          git push "https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}" "${{ steps.meta.outputs.branch }}"
-       
+          git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git"
+          git push --set-upstream origin "${{ steps.meta.outputs.branch }}"
+
       - name: Open proposal PR
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh pr create \
             --title "proposal: $ISSUE_TITLE" \
-            --body "$(cat <<'EOF'
-          ## Proposal for Issue #$ISSUE_NUMBER
-
-          Closes #$ISSUE_NUMBER
-
-          ### Review Checklist
-          - [ ] Read `changes/${{ steps.meta.outputs.slug }}/proposal.md` — architectural options and recommended approach
-          - [ ] Read `changes/${{ steps.meta.outputs.slug }}/tasks.md` — ordered implementation task list
-
-          **IMPORTANT:** Review both files before approving. Merging this PR triggers the implementation workflow.
-
-          _Generated using `${{ vars.AI_CLI || 'claude' }}` via the opsx pipeline._
-          EOF
-          )" \
+            --body "Closes #$ISSUE_NUMBER\n\nReview generated files under changes/${{ steps.meta.outputs.slug }}." \
             --base main \
             --head "${{ steps.meta.outputs.branch }}"

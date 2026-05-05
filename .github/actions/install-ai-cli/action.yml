@@ -1,11 +1,10 @@
-name: Install AI CLI (Codex / OpenCode)
-description: |
-  Install Codex or OpenCode CLI and return the invocation command.
-  For Claude, use anthropics/claude-code-action@v1 directly instead.
+name: Install AI CLI
+
+description: Install selected AI CLI and return invocation command.
 
 outputs:
   cmd:
-    description: The CLI command prefix (e.g. "codex --full-auto")
+    description: The CLI command prefix.
     value: ${{ steps.set-cmd.outputs.cmd }}
 
 runs:
@@ -14,17 +13,27 @@ runs:
     - name: Install CLI
       shell: bash
       run: |
-        CLI="${{ vars.AI_CLI }}"
+        CLI="${{ vars.AI_CLI || 'claude' }}"
         echo "Installing AI CLI: $CLI"
         case "$CLI" in
           codex)
             npm install -g --ignore-scripts @openai/codex@0.128.0
             ;;
           opencode)
-            npm install -g  --ignore-scripts opencode-ai@1.14.33
+            npm install -g --ignore-scripts opencode-ai@1.14.33
+            ;;
+          gemini)
+            npm install -g --ignore-scripts @google/gemini-cli
+            ;;
+          claude)
+            npm install -g --ignore-scripts @anthropic-ai/claude-code
+            ;;
+          dummy)
+            echo "Dummy provider selected; skipping CLI install."
             ;;
           *)
-            echo "Warning: install-ai-cli action called for '$CLI'. For Claude, use anthropics/claude-code-action@v1 instead."
+            echo "Unsupported AI_CLI: $CLI" >&2
+            exit 1
             ;;
         esac
 
@@ -32,8 +41,10 @@ runs:
       id: set-cmd
       shell: bash
       run: |
-        case "${{ vars.AI_CLI }}" in
-          codex)    echo "cmd=codex --full-auto" >> "$GITHUB_OUTPUT" ;;
+        case "${{ vars.AI_CLI || 'claude' }}" in
+          codex)    echo "cmd=codex exec" >> "$GITHUB_OUTPUT" ;;
           opencode) echo "cmd=opencode run" >> "$GITHUB_OUTPUT" ;;
-          *)        echo "cmd=echo 'No CLI configured'" >> "$GITHUB_OUTPUT" ;;
+          gemini)   echo "cmd=gemini -p" >> "$GITHUB_OUTPUT" ;;
+          claude)   echo "cmd=claude -p" >> "$GITHUB_OUTPUT" ;;
+          dummy)    echo "cmd=python -c print(\"dummy provider output\")" >> "$GITHUB_OUTPUT" ;;
         esac
