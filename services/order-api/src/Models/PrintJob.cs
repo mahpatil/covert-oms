@@ -31,9 +31,6 @@ public class SubmitJobRequest
     public string DocumentName { get; set; } = string.Empty;
     public string BranchId { get; set; } = string.Empty;
     public PrintSettings Settings { get; set; } = new();
-    // In a real system this would be a file upload stream.
-    // For the demo we accept a base64-encoded string.
-    public string DocumentBase64 { get; set; } = string.Empty;
 }
 
 public class Branch

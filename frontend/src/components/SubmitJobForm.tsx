@@ -2,12 +2,50 @@ import { FormEvent, useRef, useState } from 'react'
 import {
   Box, Card, CardContent, Typography, Button, TextField,
   FormControlLabel, Checkbox, Select, MenuItem, FormControl,
-  InputLabel, Divider, Alert, CircularProgress, Chip,
+  InputLabel, Divider, Alert, CircularProgress, Chip, LinearProgress,
 } from '@mui/material'
 import UploadFileIcon from '@mui/icons-material/UploadFile'
 import PrintIcon from '@mui/icons-material/Print'
-import { api, PrintSettings } from '../api/client'
+import { PrintSettings } from '../api/client'
 import { BranchSelector } from './BranchSelector'
+
+const MAX_FILE_SIZE = 50 * 1024 * 1024 // 50 MB
+
+function uploadFormData(
+  formData: FormData,
+  onProgress: (pct: number) => void,
+): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const token = sessionStorage.getItem('access_token')
+    const xhr = new XMLHttpRequest()
+    xhr.open('POST', '/api/orders')
+    if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`)
+
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable) onProgress(Math.round((e.loaded / e.total) * 100))
+    }
+
+    xhr.onload = () => {
+      if (xhr.status === 202 || xhr.status === 200) {
+        try {
+          resolve(JSON.parse(xhr.responseText).id)
+        } catch {
+          reject(new Error('Invalid server response'))
+        }
+      } else if (xhr.status === 401) {
+        sessionStorage.removeItem('access_token')
+        sessionStorage.removeItem('username')
+        window.dispatchEvent(new Event('auth:expired'))
+        reject(new Error('Session expired. Please sign in again.'))
+      } else {
+        reject(new Error(xhr.responseText || 'Submission failed'))
+      }
+    }
+
+    xhr.onerror = () => reject(new Error('Network error'))
+    xhr.send(formData)
+  })
+}
 
 interface Props {
   onSubmitted: (jobId: string) => void
@@ -23,6 +61,7 @@ export function SubmitJobForm({ onSubmitted }: Props) {
     paperSize: 'A4',
   })
   const [submitting, setSubmitting] = useState(false)
+  const [progress, setProgress] = useState(0)
   const [error, setError] = useState<string | null>(null)
 
   const handleFileChange = () => {
@@ -35,25 +74,28 @@ export function SubmitJobForm({ onSubmitted }: Props) {
     setError(null)
 
     const file = fileRef.current?.files?.[0]
-    if (!file) { setError('Please select a document.'); return }
+    if (!file) { setError('Please select a file.'); return }
+    if (file.size > MAX_FILE_SIZE) { setError('File exceeds the 50 MB limit.'); return }
     if (!branchId) { setError('Please select a branch.'); return }
 
-    const buffer = await file.arrayBuffer()
-    const base64 = btoa(String.fromCharCode(...new Uint8Array(buffer)))
+    const formData = new FormData()
+    formData.append('documentName', file.name)
+    formData.append('branchId', branchId)
+    formData.append('settings.Copies', settings.copies.toString())
+    formData.append('settings.Colour', settings.colour.toString())
+    formData.append('settings.PaperSize', settings.paperSize)
+    formData.append('document', file)
 
     setSubmitting(true)
+    setProgress(0)
     try {
-      const result = await api.submitJob({
-        documentName: file.name,
-        branchId,
-        documentBase64: base64,
-        settings,
-      })
-      onSubmitted(result.id)
+      const jobId = await uploadFormData(formData, setProgress)
+      onSubmitted(jobId)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Submission failed')
     } finally {
       setSubmitting(false)
+      setProgress(0)
     }
   }
 
@@ -145,6 +187,20 @@ export function SubmitJobForm({ onSubmitted }: Props) {
                 sx={{ ml: 0 }}
               />
             </Box>
+
+            {progress > 0 && progress < 100 && (
+              <Box sx={{ mb: 2 }}>
+                <LinearProgress
+                  variant="determinate"
+                  value={progress}
+                  color="secondary"
+                  aria-label="Upload progress"
+                />
+                <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                  Uploading… {progress}%
+                </Typography>
+              </Box>
+            )}
 
             {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
