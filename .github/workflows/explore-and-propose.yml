@@ -53,7 +53,6 @@ jobs:
           mkdir -p "changes/${{ steps.meta.outputs.slug }}"
 
       - name: Run explore/propose harness
-        if: vars.AI_CLI != '' && vars.AI_CLI != 'claude'
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
@@ -66,27 +65,6 @@ jobs:
             --issue-title "$ISSUE_TITLE" \
             --issue-number "$ISSUE_NUMBER" \
             --issue-body "$ISSUE_BODY"
-
-      - name: Run explore/propose (Claude)
-        if: vars.AI_CLI == '' || vars.AI_CLI == 'claude'
-        uses: anthropics/claude-code-action@v1
-        with:
-          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
-          prompt: |
-            You are running in an automated GitHub Actions workflow.
-
-            Generate proposal artifacts for this issue:
-            - Title: "$ISSUE_TITLE"
-            - Issue number: "$ISSUE_NUMBER"
-            - Body: "$ISSUE_BODY"
-
-            Write all three files under `changes/${{ steps.meta.outputs.slug }}/`:
-            - `proposal.md`
-            - `design.md`
-            - `tasks.md`
-
-            Also produce `explore_output.md` at repo root with concise exploration notes.
-            Do not prompt for approvals; operate non-interactively.
 
       - name: Commit and push proposal
         env:
