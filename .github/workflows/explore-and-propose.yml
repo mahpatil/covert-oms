@@ -1,8 +1,8 @@
 name: Explore and Propose
 
-#on:
-#  issues:
-#    types: [labeled]
+on:
+  issues:
+    types: [labeled]
 
 jobs:
   generate-proposal:
