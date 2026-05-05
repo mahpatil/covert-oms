@@ -22,16 +22,16 @@ runs:
         echo "Installing AI CLI: $CLI"
         case "$CLI" in
           codex)
-            npm install -g --ignore-scripts @openai/codex@0.128.0
+            npm install -g @openai/codex@0.128.0
             ;;
           opencode)
-            npm install -g --ignore-scripts opencode-ai@1.14.33
+            npm install -g opencode-ai@1.14.33
             ;;
           gemini)
-            npm install -g --ignore-scripts @google/gemini-cli
+            npm install -g @google/gemini-cli@0.40.1
             ;;
           claude)
-            npm install -g --ignore-scripts @anthropic-ai/claude-code
+            npm install -g @anthropic-ai/claude-code@2.1.128 
             ;;
           dummy)
             echo "Dummy provider selected; skipping CLI install."
