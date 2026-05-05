@@ -30,3 +30,5 @@ Thumbs.db
 
 # Kind / k8s
 kubeconfig
+
+.finn-thread
