@@ -19,9 +19,14 @@ jobs:
       issues: read
     steps:
       - uses: actions/checkout@v4
-
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        persist-credentials: true
+        
       - name: Compute slug and branch name
         id: meta
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           TITLE="$ISSUE_TITLE"
           SLUG=$(echo "$TITLE" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/-/g' | sed 's/--*/-/g' | sed 's/^-//' | sed 's/-$//' | cut -c1-50)
@@ -30,9 +35,12 @@ jobs:
           echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
 
       - name: Create proposal branch
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          git remote set-url origin "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git"
           git checkout -b "${{ steps.meta.outputs.branch }}"
           mkdir -p "changes/${{ steps.meta.outputs.slug }}"
 
