@@ -1,0 +1,1 @@
+It looks like write permissions haven't been granted yet. Please approve writing to `changes/support-for-large-files-when-app-loading/proposal.md` when prompted, or grant permission for writes under `changes/`. Once approved I'll write all three artifacts (proposal.md, design.md, tasks.md) in one go.
