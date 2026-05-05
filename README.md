@@ -6,6 +6,22 @@ A demo microservices project showcasing modern .NET 8 + React architecture with 
 
 ---
 
+## GitHub Workflow Inventory
+
+This repository includes GitHub Actions workflows for the AI-assisted proposal, implementation, test, scan, and deployment path. Treat these as starter harnesses: customize triggers, permissions, secrets, model/provider settings, scan gates, branch names, and deployment targets before using them for a real project.
+
+| Workflow | Purpose | Status | `harness` usage |
+|---|---|---|---|
+| [`explore-and-propose.yml`](.github/workflows/explore-and-propose.yml) | WF1. When an issue is labeled `feature`, generates an opsx proposal and task list, commits them under `changes/{slug}/`, and opens a proposal PR.  | ✅ Beta | `.github/scripts/harness.py --mode meta` and `--mode run` |
+| [`implement.yml`](.github/workflows/implement.yml) | WF2. When an approved `changes/**/tasks.md` lands on `main`, detects the changed task file, runs the selected AI CLI, commits the implementation, and opens an implementation PR.  | ✅ Beta | `.github/scripts/harness.py --mode implement-detect` and `--mode implement-run` |
+| [`test-and-scan.yml`](.github/workflows/test-and-scan.yml) | WF3. Runs backend tests, frontend tests, Docker image builds, Trivy scans, and CodeQL on pull requests.  | 📋 Alpha | `.github/scripts/harness.py --mode test-scan` with `dotnet`, `frontend`, and `docker-build` scan modes |
+| [`deploy.yml`](.github/workflows/deploy.yml) | WF4. After the `Test and Scan` workflow succeeds on `main`, builds images, deploys to a temporary Kind cluster, runs a smoke test, and cleans up.  | 📋 Alpha | Not used |
+| [`dummy-explore-and-propose.yml`](.github/workflows/dummy-explore-and-propose.yml) | Disabled sample/dummy version of the explore-and-propose flow for local workflow experimentation, without any LLM calls saving costs.  | ✅ Stable | `.github/scripts/harness.py --mode meta` and `--mode run --provider dummy` |
+
+The shared workflow harness is [`harness.py`](.github/scripts/harness.py). It supports `meta`, `run`, `implement-detect`, `implement-prompt`, `implement-run`, and `test-scan` modes.
+
+---
+
 ## Architecture
 
 ```mermaid
@@ -122,10 +138,10 @@ flowchart TD
 
 | Workflow | Trigger | What it does |
 |---|---|---|
-| `explore-and-propose` | Issue labeled `feature` | Runs `/opsx:explore` + `/opsx:propose` → opens PR with `changes/{slug}/proposal.md` and `tasks.md` |
-| `implement` | Proposal PR merged | Reads approved `tasks.md` → runs `/coder` → opens implementation PR |
-| `test-and-scan` | Any PR | dotnet tests, vitest, Trivy container scan, CodeQL analysis (parallel) |
-| `deploy` | Tests pass on `main` | Builds images, loads into Kind, applies manifests, smoke tests |
+| [WF1 `explore-and-propose`](.github/workflows/explore-and-propose.yml) | Issue labeled `feature` | Runs `/opsx:explore` + `/opsx:propose` → opens PR with `changes/{slug}/proposal.md` and `tasks.md` |
+| [WF2 `implement`](.github/workflows/implement.yml) | Proposal PR merged | Reads approved `tasks.md` → runs `/coder` → opens implementation PR |
+| [WF3 `test-and-scan`](.github/workflows/test-and-scan.yml) | Any PR | dotnet tests, vitest, Trivy container scan, CodeQL analysis (parallel) |
+| [WF4 `deploy`](.github/workflows/deploy.yml) | Tests pass on `main` | Builds images, loads into Kind, applies manifests, smoke tests |
 
 **To trigger the pipeline:**
 1. Create a GitHub Issue describing the feature
