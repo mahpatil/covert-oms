@@ -21,19 +21,14 @@ jobs:
           persist-credentials: true
           fetch-depth: 2
 
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
       - name: Detect changed tasks.md
         id: spec
         run: |
-          TASKS_FILE=$(git diff HEAD^1 HEAD --name-only | grep 'changes/.*/tasks.md' | head -1)
-          if [ -z "$TASKS_FILE" ]; then
-            echo "No tasks.md change detected, skipping."
-            echo "skip=true" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          echo "tasks_file=$TASKS_FILE" >> "$GITHUB_OUTPUT"
-          SLUG=$(echo "$TASKS_FILE" | cut -d'/' -f2)
-          echo "slug=$SLUG" >> "$GITHUB_OUTPUT"
-          echo "skip=false" >> "$GITHUB_OUTPUT"
+          python .github/scripts/harness.py --mode implement-detect --issue-title "noop" --issue-number 0
 
       - name: Setup .NET
         if: steps.spec.outputs.skip != 'true'
@@ -51,48 +46,27 @@ jobs:
           git remote set-url origin "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git"
           git checkout -b "feat/implement-${{ steps.spec.outputs.slug }}"
 
-      # ── Claude path: use the official claude-code-action ──────────────────
-      - name: Implement (Claude)
-        if: steps.spec.outputs.skip != 'true' && (vars.AI_CLI == '' || vars.AI_CLI == 'claude')
-        uses: anthropics/claude-code-action@v1
-        with:
-#          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
-          prompt: |
-            You are running in an automated GitHub Actions workflow.
-
-            Please implement the feature described in the approved proposal and task list.
-
-            Proposal: `changes/${{ steps.spec.outputs.slug }}/proposal.md`
-            Tasks: `${{ steps.spec.outputs.tasks_file }}`
-
-            Run: /coder ${{ steps.spec.outputs.tasks_file }}
-
-            Follow test-driven development (red-green-refactor). Write tests first,
-            then implement. Use the existing patterns in this codebase:
-            - .NET 8 ASP.NET Core for backend services
-            - xUnit + FluentAssertions for .NET tests
-            - React + TypeScript + Vitest for frontend
-
-      # ── Codex / OpenCode path: manual CLI install ─────────────────────────
-      - name: Setup Node (Codex/OpenCode)
-        if: steps.spec.outputs.skip != 'true' && vars.AI_CLI != '' && vars.AI_CLI != 'claude'
+      - name: Setup Node
+        if: steps.spec.outputs.skip != 'true'
         uses: actions/setup-node@v4
         with:
           node-version: '20'
 
-      - name: Install AI CLI (Codex/OpenCode)
-        if: steps.spec.outputs.skip != 'true' && vars.AI_CLI != '' && vars.AI_CLI != 'claude'
-        id: cli
+      - name: Install AI CLI
+        if: steps.spec.outputs.skip != 'true'
         uses: ./.github/actions/install-ai-cli
+        with:
+          ai_cli: ${{ vars.AI_CLI || 'claude' }}
 
-      - name: Implement (Codex/OpenCode)
-        if: steps.spec.outputs.skip != 'true' && vars.AI_CLI != '' && vars.AI_CLI != 'claude'
+      - name: Implement via harness
+        if: steps.spec.outputs.skip != 'true'
         env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: |
-          ${{ steps.cli.outputs.cmd }} "/coder ${{ steps.spec.outputs.tasks_file }}" || true
+          python .github/scripts/harness.py --mode implement-run --provider "${{ vars.AI_CLI || 'claude' }}" --issue-title "noop"  --issue-number 0 --slug "${{ steps.spec.outputs.slug }}" --tasks-file "${{ steps.spec.outputs.tasks_file }}"
 
       # ── Commit and open PR (always) ────────────────────────────────────────
       - name: Commit implementation

@@ -11,8 +11,9 @@ from pathlib import Path
 
 from ai_harness.cli import command_for_provider, provider_from_value, required_env_for_provider
 from ai_harness.meta import build_branch, build_slug
+from ai_harness.prompts import build_explore_prompt, build_implement_prompt, build_propose_prompt
 from ai_harness.runner import ensure_outputs
-
+from ai_harness.runners import detect_tasks_file, run_test_scan
 
 def _log(message: str) -> None:
     print(f"[harness] {message}")
@@ -20,12 +21,15 @@ def _log(message: str) -> None:
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--mode", choices=["meta", "run", "commit"], required=True)
+    parser.add_argument("--mode", choices=["meta", "run", "implement-detect", "implement-prompt", "implement-run", "test-scan"], required=True)
     parser.add_argument("--provider", default="claude")
     parser.add_argument("--issue-title", required=True)
     parser.add_argument("--issue-number", type=int, required=True)
     parser.add_argument("--issue-body", default="")
     parser.add_argument("--workdir", default=".")
+    parser.add_argument("--tasks-file", default="")
+    parser.add_argument("--slug", default="")
+    parser.add_argument("--test-scan-mode", choices=["dotnet", "frontend", "docker-build"], default="dotnet")
     return parser.parse_args()
 
 
@@ -87,21 +91,74 @@ def do_run(args: argparse.Namespace) -> int:
         cmd = command_for_provider(provider, os.environ)
         _log(f"constructed provider command: {' '.join(cmd)}")
         _log("running explore prompt")
-        explore = _run_prompt(cmd, f'/opsx:explore "{args.issue_title}: {args.issue_body}"')
+        explore = _run_prompt(cmd, build_explore_prompt(args.issue_title, args.issue_body))
         _log("running propose prompt")
-        propose = _run_prompt(cmd, f'/opsx:propose "{args.issue_title}"')
+        propose = _run_prompt(cmd, build_propose_prompt(args.issue_title))
     _log("ensuring output files are written")
     ensure_outputs(args.issue_title, build_slug(args.issue_title), Path(args.workdir), explore, propose)
     _log("run mode completed")
     return 0
+
+def _write_output(name: str, value: str) -> None:
+    github_output = os.getenv("GITHUB_OUTPUT")
+    if github_output:
+        with open(github_output, "a", encoding="utf-8") as handle:
+            handle.write(f"{name}={value}\n")
+    else:
+        print(f"{name}={value}")
+
+
+def do_implement_detect(_: argparse.Namespace) -> int:
+    tasks_file, slug = detect_tasks_file()
+    if not tasks_file or not slug:
+        _write_output("skip", "true")
+        print("No tasks.md change detected, skipping.")
+        return 0
+    _write_output("skip", "false")
+    _write_output("tasks_file", tasks_file)
+    _write_output("slug", slug)
+    return 0
+
+
+def do_implement_prompt(args: argparse.Namespace) -> int:
+    prompt = build_implement_prompt(args.slug, args.tasks_file)
+    print(prompt)
+    return 0
+
+
+
+def do_implement_run(args: argparse.Namespace) -> int:
+    provider = provider_from_value(args.provider)
+    for name in required_env_for_provider(provider):
+        if not os.getenv(name):
+            print(f"warning: missing expected credential {name}")
+    prompt = build_implement_prompt(args.slug, args.tasks_file)
+    if provider == "dummy":
+        print(prompt)
+        return 0
+    cmd = command_for_provider(provider, os.environ)
+    output = _run_prompt(cmd, prompt)
+    print(output)
+    return 0
+
+def do_test_scan(args: argparse.Namespace) -> int:
+    return run_test_scan(args.test_scan_mode)
 
 
 def main() -> int:
     args = parse_args()
     if args.mode == "meta":
         return do_meta(args)
-    if args.mode == "run":
+    if args.mode == "run": #propose and plan
         return do_run(args)
+    if args.mode == "implement-detect":
+            return do_implement_detect(args)
+    if args.mode == "implement-prompt":
+        return do_implement_prompt(args)
+    if args.mode == "implement-run":
+        return do_implement_run(args)
+    if args.mode == "test-scan":
+        return do_test_scan(args)
     return 0
 
 
