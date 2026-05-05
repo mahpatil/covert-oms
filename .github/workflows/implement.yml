@@ -19,7 +19,6 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           persist-credentials: true
-        with:
           fetch-depth: 2
 
       - name: Detect changed tasks.md
