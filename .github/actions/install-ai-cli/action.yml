@@ -2,6 +2,11 @@ name: Install AI CLI
 
 description: Install selected AI CLI and return invocation command.
 
+inputs:
+  ai_cli:
+    description: 'CLI tool to use'
+    required: false
+    default: 'dummy'
 outputs:
   cmd:
     description: The CLI command prefix.
@@ -13,7 +18,7 @@ runs:
     - name: Install CLI
       shell: bash
       run: |
-        CLI="${{ vars.AI_CLI || 'claude' }}"
+        CLI="${{ inputs.ai_cli || 'dummy' }}"
         echo "Installing AI CLI: $CLI"
         case "$CLI" in
           codex)
@@ -41,7 +46,7 @@ runs:
       id: set-cmd
       shell: bash
       run: |
-        case "${{ vars.AI_CLI || 'claude' }}" in
+        case "${{ inputs.ai_cli || 'dummy' }}" in
           codex)    echo "cmd=codex exec" >> "$GITHUB_OUTPUT" ;;
           opencode) echo "cmd=opencode run" >> "$GITHUB_OUTPUT" ;;
           gemini)   echo "cmd=gemini -p" >> "$GITHUB_OUTPUT" ;;
