@@ -35,7 +35,8 @@ jobs:
 
       - name: Install provider CLI
         uses: ./.github/actions/install-ai-cli
-
+        with:
+          ai_cli: ${{ vars.AI_CLI || 'claude' }}
       - name: Compute metadata
         id: meta
         run: |
