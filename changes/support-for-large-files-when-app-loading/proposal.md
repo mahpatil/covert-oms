@@ -1,0 +1,1 @@
+CLI execution failed: [Errno 8] Exec format error: 'claude'
