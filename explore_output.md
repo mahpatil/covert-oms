@@ -1,0 +1,1 @@
+CLI execution failed: [Errno 2] No such file or directory: 'claude'
