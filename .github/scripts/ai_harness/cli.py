@@ -26,7 +26,7 @@ def required_env_for_provider(provider: str) -> tuple[str, ...]:
 
 def command_for_provider(provider: str, env: Mapping[str, str]) -> list[str]:
     if provider == "claude":
-        return ["claude", "-p"]
+        return ["claude", "-p", "--allowedTools", "Bash,Read,Edit"]
     if provider == "codex":
         return ["codex", "exec"]
     if provider == "opencode":
