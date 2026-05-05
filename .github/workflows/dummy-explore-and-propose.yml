@@ -1,8 +1,8 @@
 name: Explore and Propose
-#
-#on:
-#  issues:
-#    types: [labeled]
+
+on:
+  issues:
+    types: [labeled]
 
 jobs:
   generate-proposal:
@@ -60,7 +60,7 @@ jobs:
         run: |
           python .github/scripts/harness.py \
             --mode run \
-            --provider "$AI_PROVIDER" \
+            --provider "dummy" \
             --issue-title "$ISSUE_TITLE" \
             --issue-number "$ISSUE_NUMBER" \
             --issue-body "$ISSUE_BODY"
