@@ -66,10 +66,13 @@ jobs:
             --issue-body "$ISSUE_BODY"
 
       - name: Commit and push proposal
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           git add changes/ explore_output.md 2>/dev/null || git add changes/
           git diff --staged --quiet || git commit -m "proposal: issue #$ISSUE_NUMBER - $ISSUE_TITLE"
-          git push "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}" "${{ steps.meta.outputs.branch }}"
+          git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git"
+          git push --set-upstream origin "${{ steps.meta.outputs.branch }}"
 
       - name: Open proposal PR
         env:
