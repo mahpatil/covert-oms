@@ -31,7 +31,6 @@ export interface PrintSettings {
 export interface SubmitJobRequest {
   documentName: string
   branchId: string
-  documentBase64: string
   settings: PrintSettings
 }
 
@@ -54,13 +53,6 @@ export interface PrintJob {
 export const api = {
   getBranches: (): Promise<Branch[]> =>
     fetch(`${BASE}/branches`).then(handle),
-
-  submitJob: (req: SubmitJobRequest): Promise<SubmitJobResponse> =>
-    fetch(`${BASE}/orders`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', ...authHeaders() },
-      body: JSON.stringify(req),
-    }).then(handle),
 
   listJobs: (): Promise<PrintJob[]> =>
     fetch(`${BASE}/orders`, { headers: authHeaders() }).then(handle),

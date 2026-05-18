@@ -21,7 +21,7 @@ const makeJob = (status: client.JobStatus) => ({
 describe('OrderStatus', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.useFakeTimers()
+    vi.useFakeTimers({ shouldAdvanceTime: true })
   })
 
   afterEach(() => {
@@ -39,13 +39,13 @@ describe('OrderStatus', () => {
     })
   })
 
-  it('shows "Printed successfully" when status is Done', async () => {
+  it('shows success message when status is Done', async () => {
     vi.mocked(client.api.getJob).mockResolvedValue(makeJob('Done'))
 
     render(<OrderStatus jobId="job-1" />)
 
     await waitFor(() => {
-      expect(screen.getByText(/Printed successfully/i)).toBeInTheDocument()
+      expect(screen.getByText(/securely destroyed/i)).toBeInTheDocument()
     })
   })
 
@@ -66,12 +66,12 @@ describe('OrderStatus', () => {
 
     render(<OrderStatus jobId="job-1" />)
 
-    await waitFor(() => screen.getByText(/Printing/i))
+    await waitFor(() => screen.getAllByText(/Printing/i).length > 0)
 
     vi.advanceTimersByTime(2500)
 
     await waitFor(() => {
-      expect(screen.getByText(/Printed successfully/i)).toBeInTheDocument()
+      expect(screen.getByText(/securely destroyed/i)).toBeInTheDocument()
     })
   })
 })

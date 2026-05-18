@@ -1,7 +1,16 @@
 using System.Net.Http.Json;
 using System.Text.Json.Serialization;
+using Microsoft.AspNetCore.Http.Features;
 
 var builder = WebApplication.CreateBuilder(args);
+
+const long MaxBodySize = 52_428_800; // 50 MB
+
+builder.WebHost.ConfigureKestrel(options =>
+    options.Limits.MaxRequestBodySize = MaxBodySize);
+
+builder.Services.Configure<FormOptions>(options =>
+    options.MultipartBodyLengthLimit = MaxBodySize);
 
 builder.Services.AddControllers()
     .AddJsonOptions(o => o.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));

@@ -31,13 +31,22 @@ public class OrdersController : ControllerBase
     public IActionResult GetBranches() => Ok(_branches);
 
     [HttpPost]
-    public async Task<IActionResult> SubmitJob([FromBody] SubmitJobRequest request)
+    [RequestSizeLimit(52_428_800)]
+    public async Task<IActionResult> SubmitJob([FromForm] SubmitJobRequest request, IFormFile? document)
     {
         if (string.IsNullOrWhiteSpace(request.DocumentName))
             return BadRequest("DocumentName is required.");
 
         if (!_branches.Any(b => b.Id == request.BranchId))
             return BadRequest($"Unknown branch: {request.BranchId}");
+
+        if (document is null)
+            return BadRequest("Document is required.");
+
+        // Read bytes before fire-and-forget: IFormFile stream is only valid during the request lifetime.
+        using var ms = new MemoryStream();
+        await document.CopyToAsync(ms);
+        var documentBytes = ms.ToArray();
 
         var job = new PrintJob
         {
@@ -51,7 +60,7 @@ public class OrdersController : ControllerBase
         _logger.LogInformation("Job {JobId} created for branch {BranchId}", job.Id, job.BranchId);
 
         // Hand off to print-coordinator — fire and update status asynchronously.
-        _ = ForwardToCoordinatorAsync(job, request.DocumentBase64);
+        _ = ForwardToCoordinatorAsync(job, documentBytes);
 
         return Accepted(new { job.Id, job.Status });
     }
@@ -67,7 +76,7 @@ public class OrdersController : ControllerBase
         return Ok(job);
     }
 
-    private async Task ForwardToCoordinatorAsync(PrintJob job, string documentBase64)
+    private async Task ForwardToCoordinatorAsync(PrintJob job, byte[] documentBytes)
     {
         try
         {
@@ -76,7 +85,7 @@ public class OrdersController : ControllerBase
                 JobId = job.Id,
                 job.BranchId,
                 job.DocumentName,
-                DocumentBase64 = documentBase64,
+                DocumentBase64 = Convert.ToBase64String(documentBytes),
                 job.Settings
             };
 
