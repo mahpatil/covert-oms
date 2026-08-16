@@ -1,3 +1,5 @@
+@../CLAUDE.md
+
 # Covert OMS — Claude Code Instructions
 
 ## What This Project Is
@@ -9,6 +11,7 @@ services/
   order-api/          .NET 8 ASP.NET Core — customer-facing REST API (port 5001)
   print-coordinator/  .NET 8 ASP.NET Core — internal orchestrator (port 5002)
   branch-agent/       .NET 8 ASP.NET Core — simulated branch printer (port 5003)
+  token-service/      .NET 8 ASP.NET Core — token vault (port 5004)
 frontend/             React + Vite + TypeScript (port 3000)
 infra/                Docker Compose + Kind manifests
 changes/              opsx proposals (proposal.md + tasks.md per feature)
